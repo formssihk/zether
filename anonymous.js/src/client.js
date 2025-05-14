@@ -277,10 +277,12 @@ class Client {
             const seconds = Math.ceil(wait / 1000);
             const plural = seconds === 1 ? "" : "s";
             if (value > state.available) {
+                console.log(`State Available - Transfer params: ${name}, ${value}, ${decoys}, ${beneficiary}`);
                 console.log("Your transfer has been queued. Please wait " + seconds + " second" + plural + ", for the release of your funds...");
                 return sleep(wait).then(() => this.transfer(name, value, decoys, beneficiary));
             }
             if (state.nonceUsed) {
+                console.log("Nonce used - Transfer params: " + name + ", " + value + ", " + decoys + ", " + beneficiary);
                 console.log("Your transfer has been queued. Please wait " + seconds + " second" + plural + ", until the next epoch...");
                 return sleep(wait).then(() => this.transfer(name, value, decoys, beneficiary));
             }
@@ -289,6 +291,7 @@ class Client {
             if (estimated > epochLength * 1000)
                 throw "The anonset size (" + size + ") you've requested might take longer than the epoch length (" + epochLength + " seconds) to prove. Consider re-deploying, with an epoch length at least " + Math.ceil(estimate(size, true) / 1000) + " seconds.";
             if (estimated > wait) {
+                console.log(`Estimated - Transfer params: ${name}, ${value}, ${decoys}, ${beneficiary}`);
                 console.log(wait < 3100 ? "Initiating transfer." : "Your transfer has been queued. Please wait " + seconds + " second" + plural + ", until the next epoch...");
                 return sleep(wait).then(() => this.transfer(name, value, decoys, beneficiary));
             }

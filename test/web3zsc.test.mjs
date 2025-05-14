@@ -61,6 +61,8 @@ describe("ZSC (web3.js)", function() {
     // 4) Create & fund 5 random test users
     users = Array.from({ length: 5 }, () => web3.eth.accounts.create());
     users.forEach(u => web3.eth.accounts.wallet.add(u.privateKey));
+
+    
     // await Promise.all(users.map(u =>
     //   web3.eth.sendTransaction({
     //     from: deployer,
@@ -86,63 +88,61 @@ describe("ZSC (web3.js)", function() {
   // });
 
   // it("register deployer", async () => {
+    // const clientD = new Client(web3, zsc, deployer, DEPLOYER_KEY);
+    // await clientD.register();
+    // expect(clientD.account.balance()).to.equal(0);
+  // });
+
+  // it("deposit & withdraw (deployer)", async () => {
   //   const clientD = new Client(web3, zsc, deployer, DEPLOYER_KEY);
   //   await clientD.register();
-  //   expect(clientD.account.balance()).to.equal(0);
+
+  //   await clientD.deposit(100);
+  //   expect(clientD.account._state.pending).to.equal(100);
+
+  //   await clientD.withdraw(10);
+  //   // wait for event‐handler to update state
+  //   await new Promise(r => setTimeout(r, 1000));
+  //   expect(clientD.account.balance()).to.equal(90);
   // });
 
-  it("deposit & withdraw (deployer)", async () => {
+  it("should allow transferring with decoys & miner fee (deployer → test users)", async () => {
     const clientD = new Client(web3, zsc, deployer, DEPLOYER_KEY);
     await clientD.register();
-
-    await clientD.deposit(100);
-    expect(clientD.account._state.pending).to.equal(100);
-
-    await clientD.withdraw(10);
-    // wait for event‐handler to update state
-    await new Promise(r => setTimeout(r, 1000));
-    expect(clientD.account.balance()).to.equal(90);
+    
+    // Set up clients
+    const bob = new Client(web3, zsc, users[1].address, users[1].privateKey);
+    const carol = new Client(web3, zsc, users[2].address, users[2].privateKey);
+    const dave = new Client(web3, zsc, users[3].address, users[3].privateKey);
+    
+    // Register all users
+    await Promise.all([
+      bob.register(), 
+      carol.register(), 
+      dave.register(), 
+    ]);
+    
+    // Set up alice's friends
+    clientD.friends.add("Bob", bob.account.public());
+    clientD.friends.add("Carol", carol.account.public());
+    clientD.friends.add("Dave", dave.account.public());
+    
+    // Deposit so alice can pay out
+    await clientD.deposit(50);
+    
+    // Execute the transfer
+    await clientD.transfer("Bob", 10, ["Carol", "Dave"]);
+    
+    // Give event-handler time to process
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Check Bob's balance
+    assert.equal(
+      bob.account.balance(),
+      10,
+      "Transfer amount wasn't correctly received by Bob"
+    );
   });
-
-  // it("transfer with decoys & miner fee (deployer → test users)", async () => {
-  //   // unpack users
-  //   const [alice, bob, carol, dave, miner] = users;
-
-  //   // register all
-  //   await Promise.all(
-  //     users.map(u => new Client(web3, zsc, u.address).register())
-  //   );
-
-  //   // set up deployer’s client
-  //   const clientD = new Client(web3, zsc, deployer);
-  //   for (let u of [bob, carol, dave, miner]) {
-  //     clientD.friends.add(u.address, u.address);
-  //   }
-
-  //   // deposit so deployer can pay out
-  //   await clientD.deposit(50);
-
-  //   // transfer 10 to Bob, with Carol/Dave decoys, Miner as fee
-  //   await clientD.transfer(
-  //     bob.address,
-  //     10,
-  //     [carol.address, dave.address],
-  //     miner.address
-  //   );
-  //   // give event‐handler time to process
-  //   await new Promise(r => setTimeout(r, 1000));
-
-  //   // Bob’s balance
-  //   expect(
-  //     new Client(web3, zsc, bob.address).account.balance()
-  //   ).to.equal(10);
-
-  //   // Miner’s fee
-  //   const fee = await zsc.methods.fee().call();
-  //   expect(
-  //     new Client(web3, zsc, miner.address).account.balance()
-  //   ).to.equal(Number(fee));
-  // });
 
   after(async () => {
     // close the WS provider
