@@ -1,0 +1,16 @@
+{
+  "name": "@anonymous-zether/anonymous.js",
+  "version": "0.1.0",
+  "description": "",
+  "main": "./lib",
+  "dependencies": {
+    "bn.js": "^5.1.1",
+    "elliptic": "^6.5.1",
+    "web3": "^1.7.4",
+    "web3-eth-abi": "^1.7.4",
+    "web3-utils": "^1.7.4"
+  },
+  "devDependencies": {
+    "eslint": "^5.16.0"
+  }
+}
