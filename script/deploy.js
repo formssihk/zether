@@ -69,7 +69,7 @@ async function main() {
     cashToken.address,
     zVerifier.address,
     bVerifier.address,
-    120
+    90
   );
   await zsc.deployed();
   console.log("✅ ZSC:", zsc.address);

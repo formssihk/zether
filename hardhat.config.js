@@ -1,4 +1,4 @@
-require("@nomicfoundation/hardhat-toolbox");
+// require("@nomicfoundation/hardhat-toolbox");
 // const ZetherModule = require("./ignition/modules/ZetherModule")
 
 /** @type import('hardhat/config').HardhatUserConfig */

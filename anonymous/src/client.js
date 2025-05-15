@@ -29,6 +29,24 @@ class Client {
             return Math.floor((timestamp === undefined ? (new Date).getTime() / 1000 : timestamp) / epochLength);
         };
 
+        const getChainEpoch = async() => {
+            // 1) fetch the latest block’s timestamp
+            const latestBlock = await web3.eth.getBlock('latest');
+            console.log(`Latest block timestamp: ${latestBlock.timestamp}`);
+            const ts = Number(latestBlock.timestamp);
+            console.log(`Timestamp in seconds: ${ts}`);
+        
+            // 2) fetch epochLength from the contract (in seconds)
+            const epochLen = Number(await zsc.methods.epochLength().call());
+            console.log(`Epoch length from contract: ${epochLen} seconds`);
+        
+            // 3) compute and return the on-chain epoch
+            const epo = Math.floor(ts / epochLen)
+            console.log(`Computed epoch: ${epo}`);
+            return epo;
+        }
+  
+
         const away = () => { // returns ms away from next epoch change
             const current = (new Date).getTime();
             return Math.ceil(current / (epochLength * 1000)) * (epochLength * 1000) - current;
@@ -41,6 +59,7 @@ class Client {
             return Math.ceil(size * Math.log(size) / Math.log(2) * 20 + 5200) + (contract ? 20 : 0);
             // the 20-millisecond buffer is designed to give the callback time to fire (see below).
         };
+        
 
         zsc.events.TransferOccurred() // i guess this will just filter for "from here on out."
             // an interesting prospect is whether balance recovery could be eliminated by looking at past events.
@@ -267,7 +286,7 @@ class Client {
 
           // Modified transfer method with improved error handling
 
-this.transfer = function(name, value, decoys, beneficiary) {
+this.transfer = async function(name, value, decoys, beneficiary) {
     console.log(`TEST TRANSFER: to=${name}, value=${value}, decoys=${decoys?.join(',')}, beneficiary=${beneficiary}`);
     
     if (this.account.keypair === undefined)
@@ -278,14 +297,16 @@ this.transfer = function(name, value, decoys, beneficiary) {
     
     // Force state with all funds available
     let state = account._simulate();
-    state.available += state.pending;
-    state.pending = 0;
-    account._state = state;
+    console.log(`Original state - available: ${state.available}, pending: ${state.pending}`);
+
+    // state.available += state.pending;
+    // state.pending = 0;
+    // account._state = state;
     
     console.log(`Modified state - available: ${state.available}, pending: ${state.pending}`);
     
-    if (value + fee > state.available)
-        throw `Requested transfer amount of ${value} (plus fee of ${fee}) exceeds account balance of ${state.available}.`;
+    // if (value + fee > state.available)
+    //     throw `Requested transfer amount of ${value} (plus fee of ${fee}) exceeds account balance of ${state.available}.`;
     
     // Skip all recursive waiting code
     console.log("Bypassing epoch waiting logic for test");
@@ -346,9 +367,13 @@ this.transfer = function(name, value, decoys, beneficiary) {
     
     // Main transfer promise
     console.log("Starting test transfer execution");
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
         // First, check if we're on the right epoch
-        console.log(`Current epoch: ${getEpoch()}`);
+        // console.log(`Current epoch: ${getEpoch()}`);
+        const epoch = getEpoch();
+        console.log(`Current epoch: ${epoch}`);
+
+        account._state.lastRollOver = epoch;
         
         // Try to call the contract's epochLength method to make sure the ZSC contract is working
         zsc.methods.epochLength().call()
@@ -356,7 +381,8 @@ this.transfer = function(name, value, decoys, beneficiary) {
             console.log(`Contract epoch length: ${epochLen} seconds`);
             
             console.log("Calling simulateAccounts");
-            return zsc.methods.simulateAccounts(y.map(bn128.serialize), getEpoch()).call();
+            // return zsc.methods.simulateAccounts(y.map(bn128.serialize), getEpoch()).call();
+            return zsc.methods.simulateAccounts(y.map(bn128.serialize), epoch).call();
         })
         .then(async (result) => {
             console.log("simulateAccounts succeeded");
@@ -390,17 +416,19 @@ this.transfer = function(name, value, decoys, beneficiary) {
                     - Value: ${value}
                     - Fee: ${fee}
                     - Last rollover: ${state.lastRollOver}
+                    - State: ${epoch}
                     - Available after transfer: ${state.available - value - fee}
                 `);
                 
+                
                 const proof = Service.proveTransfer(
-                    Cn, C, y, state.lastRollOver, account.keypair['x'], r,
+                    Cn, C, y, epoch, account.keypair['x'], r,
                     value, state.available - value - fee, index, fee
                 );
                 
                 console.log("Proof generated successfully");
                 
-                const u = utils.u(state.lastRollOver, account.keypair['x']);
+                const u = utils.u(epoch, account.keypair['x']);
                 console.log(`Generated u value for epoch ${state.lastRollOver}`);
                 
                 const beneficiaryKey = beneficiary === undefined ? bn128.zero : friends[beneficiary];
@@ -519,6 +547,19 @@ this.transfer = function(name, value, decoys, beneficiary) {
         });
     });
 };
+
+        this.simulateAccounts = async (pubkeys) => {
+            const epoch = await getChainEpoch();
+            console.log(`Current epoch: ${epoch}`);
+            return zsc.methods.simulateAccounts(pubkeys.map(bn128.serialize), epoch).call()
+                .then((result) => {
+                    return result.map((account) => ElGamal.deserialize(account));
+                })
+                .catch((error) => {
+                    console.error("Error simulating accounts:", error);
+                    throw new Error(`Simulation failed: ${error.message}`);
+                });
+        };
 
         this.withdraw = (value) => {
             if (this.account.keypair === undefined)

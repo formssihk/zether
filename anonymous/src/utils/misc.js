@@ -1,4 +1,4 @@
-const bn128 = require('../utils/bn128.js');
+const bn128 = require('./bn128.js');
 const BN = require('bn.js');
 
 const { FieldVector } = require('./algebra.js');

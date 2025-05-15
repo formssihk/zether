@@ -1,8 +1,8 @@
 const { soliditySha3 } = require('web3-utils');
 const BN = require('bn.js');
 
-const bn128 = require('../utils/bn128.js');
-const utils = require('../utils/utils.js');
+const bn128 = require('./bn128.js');
+const utils = require('./utils.js');
 
 class PedersenCommitment {
     static base = {

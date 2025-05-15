@@ -1,5 +1,5 @@
 const { ethers } = require('ethers');
-const Client = require('../anonymous.js/src/client.js');
+const Client = require('../anonymous/src/client.js');
 const { expect } = require('chai');
 
 // Import compiled contract artifacts

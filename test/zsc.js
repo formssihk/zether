@@ -10,7 +10,7 @@ import { createRequire }  from "module";
 
 // dotenv.config();
 const require = createRequire(import.meta.url);
-const Client  = require("../anonymous.js/src/client.js");
+const Client  = require("../anonymous/src/client.js");
 
 // Recreate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
