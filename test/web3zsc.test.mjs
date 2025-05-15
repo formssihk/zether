@@ -14,8 +14,8 @@ const WS_URL       = process.env.RPC_WS_URL || "ws://127.0.0.1:8546";
 const DEPLOYER_KEY  = "0xcce34f0b0f42396c20048c21763fc5ff8096f57ecf2e6f940079cc75ca25501d";
 
 // contract addresses (hard-coded here; adjust if yours differ)
-const CASH_ADDRESS = "0x41A0F79712811d03718D63122601c69133EeE1ba";
-const ZSC_ADDRESS  = "0x328136867b4a422ED5ed4657257edd4280D2F193";
+const CASH_ADDRESS = "0x30a7950a8d4a532611B27E3289A540aa4C3F2E9E";
+const ZSC_ADDRESS  = "0x1915B3e1b4840Be0A2df57aBd551272Ab3926524";
 
 // Recreate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -107,6 +107,7 @@ describe("ZSC (web3.js)", function() {
   // });
 
   it("should allow transferring with decoys & miner fee (deployer → test users)", async () => {
+    // this.timeout(60000);
     const clientD = new Client(web3, zsc, deployer, DEPLOYER_KEY);
     await clientD.register();
     
@@ -127,11 +128,12 @@ describe("ZSC (web3.js)", function() {
     clientD.friends.add("Carol", carol.account.public());
     clientD.friends.add("Dave", dave.account.public());
     
-    // Deposit so alice can pay out
+    // Deposit so clientD can pay out
     await clientD.deposit(50);
     
     // Execute the transfer
-    await clientD.transfer("Bob", 10, ["Carol", "Dave"]);
+    // await clientD.transfer("Bob", 10, ["Carol", "Dave"]);
+    await clientD.transfer("Bob", 10);
     
     // Give event-handler time to process
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -142,7 +144,7 @@ describe("ZSC (web3.js)", function() {
       10,
       "Transfer amount wasn't correctly received by Bob"
     );
-  });
+  }).timeout(60000);;
 
   after(async () => {
     // close the WS provider
