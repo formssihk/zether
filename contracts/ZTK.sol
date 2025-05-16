@@ -2,12 +2,12 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts@v3.4.2/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts@v3.4.2/access/Ownable.sol";
 import "./Utils.sol";
 import "./ZetherVerifier.sol";
 import "./BurnVerifier.sol";
-import "./InnerProductVerifier.sol";
+import "./InnerProductVerifier.sol"; // Included for clarity
 
 contract ZTK is ERC20, Ownable {
     using Utils for uint256;
