@@ -2,14 +2,14 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts@v3.4.2/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts@v3.4.2/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Utils.sol";
 import "./ZetherVerifier.sol";
 import "./BurnVerifier.sol";
 import "./InnerProductVerifier.sol"; // Included for clarity
 
-contract ZTK is ERC20, Ownable {
+contract ZetherEnhancedZTK is ERC20, Ownable {
     using Utils for uint256;
     using Utils for Utils.G1Point;
 
@@ -19,6 +19,7 @@ contract ZTK is ERC20, Ownable {
     uint256 public fee;
     ZetherVerifier public zetherVerifier;
     BurnVerifier public burnVerifier;
+    bool public zetherTransfersFrozen; // Tracks freeze status for Zether transfers
 
     // Shielded account storage
     mapping(bytes32 => Utils.G1Point[2]) acc; // Main account: [CLn, CRn] (ElGamal commitments)
@@ -27,11 +28,18 @@ contract ZTK is ERC20, Ownable {
     bytes32[] nonceSet; // Nonce tracking for replay protection
     uint256 public lastGlobalUpdate; // Current epoch proxy
 
+    // Blacklist for public keys
+    mapping(bytes32 => bool) public blacklistedKeys; // Maps public key hash to blacklist status
+
     // Events
     event Registered(address indexed account, bytes32 indexed publicKey);
     event Deposited(address indexed account, uint256 amount, bytes32 indexed publicKey);
     event ShieldedTransfer(Utils.G1Point[] parties, Utils.G1Point beneficiary);
     event Burned(address indexed account, uint256 amount, bytes32 indexed publicKey);
+    event ZetherTransfersFrozen(address indexed owner);
+    event ZetherTransfersUnfrozen(address indexed owner);
+    event KeyBlacklisted(bytes32 indexed keyHash);
+    event KeyRemovedFromBlacklist(bytes32 indexed keyHash);
 
     constructor(
         address _zetherVerifier,
@@ -46,6 +54,7 @@ contract ZTK is ERC20, Ownable {
         epochLength = _epochLength;
         fee = zetherVerifier.fee();
         lastGlobalUpdate = 0;
+        zetherTransfersFrozen = false; // Initialize as unfrozen
         Utils.G1Point memory empty;
         pending[keccak256(abi.encode(empty))][1] = Utils.g(); // Initialize empty account
     }
@@ -58,6 +67,36 @@ contract ZTK is ERC20, Ownable {
     // Mint function for testing (restricted to owner)
     function mint(address to, uint256 amount) external onlyOwner {
         _mint(to, amount);
+    }
+
+    // Freeze Zether transfers
+    function freezeZetherTransfers() external onlyOwner {
+        require(!zetherTransfersFrozen, "ZTK: transfers already frozen");
+        zetherTransfersFrozen = true;
+        emit ZetherTransfersFrozen(msg.sender);
+    }
+
+    // Unfreeze Zether transfers
+    function unfreezeZetherTransfers() external onlyOwner {
+        require(zetherTransfersFrozen, "ZTK: transfers not frozen");
+        zetherTransfersFrozen = false;
+        emit ZetherTransfersUnfrozen(msg.sender);
+    }
+
+    // Add public key to blacklist
+    function addToBlacklist(Utils.G1Point memory key) external onlyOwner {
+        bytes32 keyHash = keccak256(abi.encode(key));
+        require(!blacklistedKeys[keyHash], "ZTK: key already blacklisted");
+        blacklistedKeys[keyHash] = true;
+        emit KeyBlacklisted(keyHash);
+    }
+
+    // Remove public key from blacklist
+    function removeFromBlacklist(Utils.G1Point memory key) external onlyOwner {
+        bytes32 keyHash = keccak256(abi.encode(key));
+        require(blacklistedKeys[keyHash], "ZTK: key not blacklisted");
+        blacklistedKeys[keyHash] = false;
+        emit KeyRemovedFromBlacklist(keyHash);
     }
 
     // Simulate accounts for a given epoch (from ZSC.sol)
@@ -79,6 +118,7 @@ contract ZTK is ERC20, Ownable {
     function registerAccount(Utils.G1Point memory y, uint256 c, uint256 s) external {
         bytes32 yHash = keccak256(abi.encode(y));
         require(!registered(yHash), "ZTK: account already registered");
+        require(!blacklistedKeys[yHash], "ZTK: public key is blacklisted");
 
         // Verify Schnorr signature
         Utils.G1Point memory K = Utils.g().mul(s).add(y.mul(c.neg()));
@@ -95,6 +135,7 @@ contract ZTK is ERC20, Ownable {
     function depositForPrivateTx(uint256 amount, Utils.G1Point memory y, bool shouldMint) external {
         bytes32 yHash = keccak256(abi.encode(y));
         require(registered(yHash), "ZTK: account not registered");
+        require(!blacklistedKeys[yHash], "ZTK: public key is blacklisted");
         require(amount <= MAX, "ZTK: amount exceeds MAX limit");
 
         rollOver(yHash);
@@ -124,13 +165,21 @@ contract ZTK is ERC20, Ownable {
         bytes memory proof,
         Utils.G1Point memory beneficiary
     ) external {
+        require(!zetherTransfersFrozen, "ZTK: shielded transfers are frozen");
         uint256 size = y.length;
         Utils.G1Point[] memory CLn = new Utils.G1Point[](size);
         Utils.G1Point[] memory CRn = new Utils.G1Point[](size);
         require(C.length == size, "ZTK: input array length mismatch");
 
-        // Handle beneficiary (fee recipient)
+        // Check blacklist for parties and beneficiary
+        for (uint256 i = 0; i < size; i++) {
+            bytes32 yHash = keccak256(abi.encode(y[i]));
+            require(!blacklistedKeys[yHash], "ZTK: party public key is blacklisted");
+        }
         bytes32 beneficiaryHash = keccak256(abi.encode(beneficiary));
+        require(!blacklistedKeys[beneficiaryHash], "ZTK: beneficiary public key is blacklisted");
+
+        // Handle beneficiary (fee recipient)
         require(registered(beneficiaryHash), "ZTK: beneficiary not registered");
         rollOver(beneficiaryHash);
         pending[beneficiaryHash][0] = pending[beneficiaryHash][0].add(Utils.g().mul(fee));
@@ -169,6 +218,7 @@ contract ZTK is ERC20, Ownable {
     function burn(Utils.G1Point memory y, uint256 bTransfer, Utils.G1Point memory u, bytes memory proof) external {
         bytes32 yHash = keccak256(abi.encode(y));
         require(registered(yHash), "ZTK: account not registered");
+        require(!blacklistedKeys[yHash], "ZTK: public key is blacklisted");
         require(bTransfer <= MAX, "ZTK: burn amount exceeds MAX limit");
 
         rollOver(yHash);
