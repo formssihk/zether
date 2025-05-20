@@ -2,8 +2,12 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+// import for remix use
+// import "@openzeppelin/contracts@3.4.2/token/ERC20/ERC20.sol";
+// import "@openzeppelin/contracts@3.4.2/access/Ownable.sol";
+// import for local testing
+import "./ZERC20.sol";
+import "./Ownable.sol";
 import "./Utils.sol";
 import "./ZetherVerifier.sol";
 import "./BurnVerifier.sol";
