@@ -69,15 +69,7 @@ describe("ZSC (web3.js)", function() {
     // 4) Create & fund 5 random test users
     users = Array.from({ length: 5 }, () => web3.eth.accounts.create());
     users.forEach(u => web3.eth.accounts.wallet.add(u.privateKey));
-    
-    // await Promise.all(users.map(u =>
-    //   web3.eth.sendTransaction({
-    //     from: deployer,
-    //     to:   u.address,
-    //     value: web3.utils.toWei("1", "ether"),
-    //     gas: 21000
-    //   })
-    // ));
+
   });
   
 
@@ -144,83 +136,83 @@ describe("ZSC (web3.js)", function() {
     console.log('\rDone waiting!             ');
   }
 
-  // it("should allow transferring with decoys & miner fee (deployer → test users)", async () => {
-  //   console.log(`Minting ${mintAmount} tokens to deployer...`);
-  // try {
-  //   await cash.methods.mint(deployer, mintAmount)
-  //     .send({ from: deployer, gas: 6721975, gasPrice: 0 });
+  it("should allow transferring with decoys & miner fee (deployer → test users)", async () => {
+    console.log(`Minting ${mintAmount} tokens to deployer...`);
+  try {
+    await cash.methods.mint(deployer, mintAmount)
+      .send({ from: deployer, gas: 6721975, gasPrice: 0 });
     
-  //   const postMintBalance = await cash.methods.balanceOf(deployer).call();
-  //   console.log("Balance after minting:", postMintBalance);
-  // } catch (error) {
-  //   console.error("Error during minting:", error);
-  //   // Continue anyway as the tokens might already be minted
-  // }
+    const postMintBalance = await cash.methods.balanceOf(deployer).call();
+    console.log("Balance after minting:", postMintBalance);
+  } catch (error) {
+    console.error("Error during minting:", error);
+    // Continue anyway as the tokens might already be minted
+  }
   
-  // // Step 2: Approve ZSC with better error handling
-  // console.log(`Approving ZSC contract to spend ${mintAmount} tokens...`);
-  // try {
-  //   const currentAllowance = await cash.methods.allowance(deployer, ZSC_ADDRESS).call();
-  //   console.log("Current allowance:", currentAllowance);
+  // Step 2: Approve ZSC with better error handling
+  console.log(`Approving ZSC contract to spend ${mintAmount} tokens...`);
+  try {
+    const currentAllowance = await cash.methods.allowance(deployer, ZSC_ADDRESS).call();
+    console.log("Current allowance:", currentAllowance);
     
-  //   if (BigInt(currentAllowance) < BigInt(mintAmount)) {
-  //     await cash.methods.approve(ZSC_ADDRESS, mintAmount)
-  //       .send({ from: deployer, gas: 6721975, gasPrice: 0 });
+    if (BigInt(currentAllowance) < BigInt(mintAmount)) {
+      await cash.methods.approve(ZSC_ADDRESS, mintAmount)
+        .send({ from: deployer, gas: 6721975, gasPrice: 0 });
       
-  //     const newAllowance = await cash.methods.allowance(deployer, ZSC_ADDRESS).call();
-  //     console.log("New allowance:", newAllowance);
-  //   } else {
-  //     console.log("Sufficient allowance already exists");
-  //   }
-  // } catch (error) {
-  //   console.error("Error during approval:", error);
-  //   throw error; // This is critical, so we'll stop the test if it fails
-  // }
-  //   const clientD = new Client(web3, zsc, deployer, DEPLOYER_KEY);
-  //   await clientD.register();
+      const newAllowance = await cash.methods.allowance(deployer, ZSC_ADDRESS).call();
+      console.log("New allowance:", newAllowance);
+    } else {
+      console.log("Sufficient allowance already exists");
+    }
+  } catch (error) {
+    console.error("Error during approval:", error);
+    throw error; // This is critical, so we'll stop the test if it fails
+  }
+    const clientD = new Client(web3, zsc, deployer, DEPLOYER_KEY);
+    await clientD.register();
 
-  //   console.log(`Wait 10secs`)
-  //   await delay(10);
+    console.log(`Wait 10secs`)
+    await delay(10);
     
-  //   // Set up clients
-  //   const bob = new Client(web3, zsc, users[1].address, users[1].privateKey);
-  //   const carol = new Client(web3, zsc, users[2].address, users[2].privateKey);
-  //   const dave = new Client(web3, zsc, users[3].address, users[3].privateKey);
+    // Set up clients
+    const bob = new Client(web3, zsc, users[1].address, users[1].privateKey);
+    const carol = new Client(web3, zsc, users[2].address, users[2].privateKey);
+    const dave = new Client(web3, zsc, users[3].address, users[3].privateKey);
     
-  //   // Register all users
-  //   await Promise.all([
-  //     bob.register(), 
-  //     carol.register(), 
-  //     dave.register(), 
-  //   ]);
+    // Register all users
+    await Promise.all([
+      bob.register(), 
+      carol.register(), 
+      dave.register(), 
+    ]);
     
-  //   // Set up alice's friends
-  //   clientD.friends.add("Bob", bob.account.public());
-  //   clientD.friends.add("Carol", carol.account.public());
-  //   clientD.friends.add("Dave", dave.account.public());
+    // Set up alice's friends
+    clientD.friends.add("Bob", bob.account.public());
+    clientD.friends.add("Carol", carol.account.public());
+    clientD.friends.add("Dave", dave.account.public());
     
-  //   // Deposit so clientD can pay out
-  //   console.log(`Depositing ${50}…`);
-  //   await clientD.deposit(50);
-  //   console.log(`Deployer deposited`);
+    // Deposit so clientD can pay out
+    console.log(`Depositing ${50}…`);
+    await clientD.deposit(50);
+    console.log(`Deployer deposited`);
 
-  //   console.log('Waiting for 2 minutes…');
-  //   await countdown(2 * 60)
+    console.log('Waiting for 2 minutes…');
+    await countdown(2 * 60)
 
-  //   // Execute the transfer
-  //   // await clientD.transfer("Bob", 10, ["Carol", "Dave"]);
-  //   await clientD.transfer("Bob", 10);
+    // Execute the transfer
+    // await clientD.transfer("Bob", 10, ["Carol", "Dave"]);
+    await clientD.transfer("Bob", 10);
     
-  //   // Give event-handler time to process
-  //   await new Promise(resolve => setTimeout(resolve, 100));
+    // Give event-handler time to process
+    await new Promise(resolve => setTimeout(resolve, 100));
     
-  //   // Check Bob's balance
-  //   assert.equal(
-  //     bob.account.balance(),
-  //     10,
-  //     "Transfer amount wasn't correctly received by Bob"
-  //   );
-  // }).timeout(5 * 60 * 1000);
+    // Check Bob's balance
+    assert.equal(
+      bob.account.balance(),
+      10,
+      "Transfer amount wasn't correctly received by Bob"
+    );
+  }).timeout(5 * 60 * 1000);
 
   it("get deployer balance", async () => {
     const pubKeyStr = "0x1dee9f2165784a3240c4a0719b0806ec9e0f47ed222455fb195ee605865bb776,0x1610362e336f48a30c040513e6dae488fdbab820bb4046d2b870c68815961507";

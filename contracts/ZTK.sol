@@ -32,6 +32,9 @@ contract ZetherEnhancedZTK is ERC20, Ownable {
     bytes32[] nonceSet; // Nonce tracking for replay protection
     uint256 public lastGlobalUpdate; // Current epoch proxy
 
+    // Reserve tracking for proper backing
+    uint256 public ownerReserves; // Tracks owner's locked tokens as backing for shielded pool
+
     // Blacklist for public keys
     mapping(bytes32 => bool) public blacklistedKeys; // Maps public key hash to blacklist status
 
@@ -44,6 +47,7 @@ contract ZetherEnhancedZTK is ERC20, Ownable {
     event ZetherTransfersUnfrozen(address indexed owner);
     event KeyBlacklisted(bytes32 indexed keyHash);
     event KeyRemovedFromBlacklist(bytes32 indexed keyHash);
+    event ReservesUpdated(uint256 newReserves);
 
     constructor(
         address _zetherVerifier,
@@ -59,6 +63,7 @@ contract ZetherEnhancedZTK is ERC20, Ownable {
         fee = zetherVerifier.fee();
         lastGlobalUpdate = 0;
         zetherTransfersFrozen = false; // Initialize as unfrozen
+        ownerReserves = 0; // Initialize reserves
         Utils.G1Point memory empty;
         pending[keccak256(abi.encode(empty))][1] = Utils.g(); // Initialize empty account
     }
@@ -71,6 +76,11 @@ contract ZetherEnhancedZTK is ERC20, Ownable {
     // Mint function for testing (restricted to owner)
     function mint(address to, uint256 amount) external onlyOwner {
         _mint(to, amount);
+    }
+
+    // Get available reserves for backing withdrawals
+    function getAvailableReserves() external view returns (uint256) {
+        return ownerReserves;
     }
 
     // Freeze Zether transfers
@@ -146,7 +156,10 @@ contract ZetherEnhancedZTK is ERC20, Ownable {
 
         if (shouldMint) {
             require(msg.sender == owner(), "ZTK: only owner can mint");
-            _mint(msg.sender, amount);
+            // Mint tokens to contract as reserves (not to owner's wallet)
+            _mint(address(this), amount);
+            ownerReserves += amount;
+            emit ReservesUpdated(ownerReserves);
         } else {
             require(balanceOf(msg.sender) >= amount, "ZTK: insufficient balance");
             _burn(msg.sender, amount);
@@ -227,7 +240,13 @@ contract ZetherEnhancedZTK is ERC20, Ownable {
 
         rollOver(yHash);
 
-        // Update pending balance
+        // Check if there are sufficient reserves to back this withdrawal
+        require(ownerReserves >= bTransfer, "ZTK: insufficient reserves for withdrawal");
+        
+        // Ensure contract has enough tokens (double-check against manipulation)
+        require(balanceOf(address(this)) >= bTransfer, "ZTK: contract insufficient token balance");
+
+        // Update pending balance (debit shielded account)
         Utils.G1Point[2] memory scratch = pending[yHash];
         pending[yHash][0] = scratch[0].add(Utils.g().mul(bTransfer.neg()));
 
@@ -242,16 +261,27 @@ contract ZetherEnhancedZTK is ERC20, Ownable {
         }
         nonceSet.push(uHash);
 
-        // Verify burn proof
+        // Verify burn proof - this ensures only legitimate shielded token holders can withdraw
         require(
             burnVerifier.verifyBurn(scratch[0], scratch[1], y, lastGlobalUpdate, u, msg.sender, proof),
             "ZTK: burn proof verification failed"
         );
 
-        // Transfer tokens to sender
-        _mint(msg.sender, bTransfer);
+        // Burn from reserves and mint to user
+        _burn(address(this), bTransfer); // Burn from contract's reserves
+        ownerReserves -= bTransfer; // Update reserve tracking
+        _mint(msg.sender, bTransfer); // Mint fresh tokens to user
 
         emit Burned(msg.sender, bTransfer, yHash);
+        emit ReservesUpdated(ownerReserves);
+    }
+
+    // Emergency function for owner to add more reserves
+    function addReserves(uint256 amount) external onlyOwner {
+        require(balanceOf(msg.sender) >= amount, "ZTK: insufficient balance");
+        _transfer(msg.sender, address(this), amount);
+        ownerReserves += amount;
+        emit ReservesUpdated(ownerReserves);
     }
 
     // Internal: Roll over pending balances to main account
