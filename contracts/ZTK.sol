@@ -5,15 +5,18 @@ pragma experimental ABIEncoderV2;
 // import for remix use
 // import "@openzeppelin/contracts@3.4.2/token/ERC20/ERC20.sol";
 // import "@openzeppelin/contracts@3.4.2/access/Ownable.sol";
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 // import for local testing
-import "./ZERC20.sol";
-import "./Ownable.sol";
+// import "./ZERC20.sol";
+// import "./Ownable.sol";
 import "./Utils.sol";
 import "./ZetherVerifier.sol";
 import "./BurnVerifier.sol";
 import "./InnerProductVerifier.sol"; // Included for clarity
 
-contract ZetherEnhancedZTK is ERC20, Ownable {
+contract ZTK is ERC20, Ownable {
     using Utils for uint256;
     using Utils for Utils.G1Point;
 
