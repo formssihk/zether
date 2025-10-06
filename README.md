@@ -462,23 +462,5 @@ npm test test/enhancedFlow.test.mjs
 REPORT_GAS=true npm test
 ```
 
-
-## Resources
-
-### Documentation
-- [Zether Paper](https://eprint.iacr.org/2019/191)
-- [Bulletproofs](https://eprint.iacr.org/2017/1066)
-- [BN128 Curve](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-196.md)
-
-### Tools
-- [Hardhat](https://hardhat.org/)
-- [Ethers.js](https://docs.ethers.io/)
-- [Web3.js](https://web3js.readthedocs.io/)
-
-### Community
-- [GitHub Issues](https://github.com/your-repo/issues)
-- [Discord Channel](#)
-- [Telegram Group](#)
-
 ---
 
