@@ -11,10 +11,11 @@
 8. [Gas Optimization](#gas-optimization)
 9. [Security Considerations](#security-considerations)
 10. [Troubleshooting](#troubleshooting)
+11. [References](#references)
 
 ## Overview
 
-Zether is a privacy-preserving smart contract system that enables confidential transfers on Ethereum-compatible blockchains. It uses zero-knowledge proofs to hide transaction amounts and participants while maintaining cryptographic guarantees.
+Zether is a privacy-preserving smart contract system that enables confidential transfers on Ethereum-compatible blockchains. [1] It uses zero-knowledge proofs to hide transaction amounts and participants while maintaining cryptographic guarantees.
 
 ### Key Features
 - **Confidential Transfers**: Hide transaction amounts and participants
@@ -62,7 +63,7 @@ Handles verification of transfer proofs using Sigma protocols and inner product 
 Handles verification of burn (withdrawal) proofs.
 
 ### 4. InnerProductVerifier
-Implements inner product proof verification using Bulletproofs-style arguments.
+Implements inner product proof verification using Bulletproofs-style arguments. [2]
 
 ### 5. Utils
 Cryptographic utility functions for elliptic curve operations on the BN128 curve.
@@ -433,7 +434,7 @@ contract.on("TransferOccurred", (parties, beneficiary) => {
 // Check account state
 const accountState = await zsc.simulateAccounts([publicKey], currentEpoch);
 console.log("Account state:", accountState);
-```
+```'
 
 ### Network-Specific Issues
 
@@ -462,5 +463,9 @@ npm test test/enhancedFlow.test.mjs
 REPORT_GAS=true npm test
 ```
 
+## References
+##### [1] Zether: Towards Privacy in a Smart Contract World. Benedikt Bünz, Shashank Agrawal, Mahdi Zamani, and Dan Boneh. Financial Cryptography and Data Security (FC), 2020.
+
+##### [2] Bünz, B., Bootle, J., Boneh, D., Poelstra, A., Wuille, P., & Maxwell, G. (2018). "Bulletproofs: Short Proofs for Confidential Transactions and More." IEEE S&P 2018.
 ---
 
